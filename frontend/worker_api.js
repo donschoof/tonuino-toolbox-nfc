@@ -1,5 +1,3 @@
-const { ipcRenderer } = require('electron');
-
 const COMMAND_STATUS_READY = 1;
 
 let worker_api = {
@@ -8,7 +6,7 @@ let worker_api = {
 
     init: () => {
 
-        ipcRenderer.on('answer-from-worker', (event, arg) => {
+        window.electronAPI.on('answer-from-worker', (arg) => {
 
             if(worker_api.running_commands[arg.command] !== undefined) {
                 worker_api.running_commands[arg.command].success(arg.answer);
@@ -44,7 +42,7 @@ let worker_api = {
         /*
          * sende commando an den worker über den main prozess
          */
-        ipcRenderer.send('command-from-window', {
+        window.electronAPI.send('command-from-window', {
             command: name, params: params
         });
     }

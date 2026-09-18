@@ -1,5 +1,3 @@
-const { ipcRenderer } = require('electron');
-
 $(document).ready(() => {
 
     let answer = 0;
@@ -10,13 +8,13 @@ $(document).ready(() => {
         let $btn = $(ev.currentTarget);
         answer = $btn.data('answer');
 
-        ipcRenderer.send('answer-from-dialog', {
+        window.electronAPI.send('answer-from-dialog', {
             answer: answer
         });
 
     });
 
-    ipcRenderer.on('open-dialog', (event, args) => {
+    window.electronAPI.on('open-dialog', (args) => {
 
         $buttons.hide();
 

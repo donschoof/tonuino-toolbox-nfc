@@ -66,15 +66,9 @@ const createWindow = () => {
     height: 700,
     frame: false,
     webPreferences: {
-      // Modern Electron defaults webPreferences.sandbox to true for every
-      // renderer, which disables Node integration even with
-      // nodeIntegration:true unless sandbox is explicitly turned back off.
-      // This app's renderer code calls require() directly (no preload/
-      // contextBridge split), so nodeIntegration + sandbox:false is kept
-      // to preserve existing behavior. See the accompanying report for the
-      // contextIsolation/preload migration this leaves as future work.
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname, 'preload-main.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
       sandbox: false,
       webSecurity: false
     },
@@ -97,7 +91,15 @@ const createWindow = () => {
     show: false,
     width: 800,
     height: 600,
-    webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false }
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-worker.js'),
+      // The worker window's real logic now lives in preload-worker.js
+      // (full Node access there regardless of contextIsolation). sandbox
+      // must stay false or the preload script itself loses require().
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false
+    }
   });
 
   //workerWindow.webContents.openDevTools();
@@ -198,7 +200,12 @@ const createWindowDialog = () => {
     width: 350,
     height: 240,
     frame: false,
-    webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-dialog.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false
+    },
     show: false,
     modal: true,
     parent: mainWindow,
@@ -262,6 +269,17 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-app-path', (event, name) => {
     return app.getPath(name);
+  });
+
+  /*
+   * Renderer processes (mainWindow, dialogWindow) can no longer require()
+   * electron-log directly once contextIsolation is on, so their browser-
+   * safe logger (frontend/logger.js) forwards through here instead.
+   */
+  ipcMain.on('renderer-log', (event, arg) => {
+    if (arg && arg.level && typeof log[arg.level] === 'function') {
+      log[arg.level](...(Array.isArray(arg.args) ? arg.args : [arg.args]));
+    }
   });
 
   registerProtocols();

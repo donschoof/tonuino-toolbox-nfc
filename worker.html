@@ -4,8 +4,10 @@
     <title>tonuino-toolbox-worker</title>
 </head>
 <body>
-
-
-<script>require('./worker');</script>
+<!--
+  This window's logic runs entirely via preload-worker.js, which loads
+  worker.js in a preload context (full Node access regardless of
+  contextIsolation). No page-level script is needed here.
+-->
 </body>
 </html>

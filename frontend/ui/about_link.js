@@ -1,5 +1,4 @@
-const shell = require('electron').shell;
-const logger = require('../../logger');
+const logger = require('../logger');
 
 let about_link = {
 
@@ -11,7 +10,7 @@ let about_link = {
 
         about_link.$btn.click(() => {
             logger.log('open link');
-            shell.openExternal('https://geldfrei.net');
+            window.electronAPI.openExternal('https://geldfrei.net');
         });
 
     }

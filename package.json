@@ -4,13 +4,15 @@
   "description": "Organisiere Deine Tonuino SD-Karte ohne Stress :)",
   "main": "start.js",
   "scripts": {
+    "build:renderer": "webpack --config webpack.config.js",
+    "prestart": "npm run build:renderer",
     "start": "electron .",
-    "build": "electron-builder build --linux --win --publish never",
-    "build-mac": "electron-builder build --mac --publish never",
-    "build-linux": "electron-builder build --linux --publish never",
-    "build-win": "electron-builder build --win --publish never",
-    "deploy": "electron-builder build --linux --win --publish always",
-    "deploy-mac": "electron-builder build --mac --publish always",
+    "build": "npm run build:renderer && electron-builder build --linux --win --publish never",
+    "build-mac": "npm run build:renderer && electron-builder build --mac --publish never",
+    "build-linux": "npm run build:renderer && electron-builder build --linux --publish never",
+    "build-win": "npm run build:renderer && electron-builder build --win --publish never",
+    "deploy": "npm run build:renderer && electron-builder build --linux --win --publish always",
+    "deploy-mac": "npm run build:renderer && electron-builder build --mac --publish always",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Raphael Wintrich <raphael@geldfrei.net>",
@@ -18,7 +20,9 @@
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
     "electron": "^44.4.2",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "webpack": "^5.111.0",
+    "webpack-cli": "^7.2.3"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

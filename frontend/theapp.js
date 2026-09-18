@@ -1,5 +1,4 @@
-const { ipcRenderer } = require('electron');
-const logger = require('../logger');
+const logger = require('./logger');
 
 let theapp = {
 
@@ -31,13 +30,13 @@ let theapp = {
         /*
          * App Version setzen
          */
-        theapp.$app_version.text(await ipcRenderer.invoke('get-app-version'));
+        theapp.$app_version.text(await window.electronAPI.invoke('get-app-version'));
 
         /*
          * pfade
          */
-        theapp.path_data = await ipcRenderer.invoke('get-app-path', 'appData');
-        theapp.path_user = await ipcRenderer.invoke('get-app-path', 'userData');
+        theapp.path_data = await window.electronAPI.invoke('get-app-path', 'appData');
+        theapp.path_user = await window.electronAPI.invoke('get-app-path', 'userData');
 
         /*
          * init message service
@@ -119,7 +118,7 @@ let theapp = {
         /*
          * listen for status messages
          */
-        ipcRenderer.on('status-message', (event, arg) => {
+        window.electronAPI.on('status-message', (arg) => {
             theapp.$status_message.html(arg.message);
         });
 

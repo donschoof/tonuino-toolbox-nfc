@@ -1,5 +1,4 @@
-const { ipcRenderer } = require('electron');
-const logger = require('../logger');
+const logger = require('./logger');
 
 let dialog = {
 
@@ -7,7 +6,7 @@ let dialog = {
 
     init: () => {
 
-        ipcRenderer.on('answer-from-dialog', (event, arg) => {
+        window.electronAPI.on('answer-from-dialog', (arg) => {
 
             logger.log(dialog.callback);
             if(dialog.callback) {
@@ -26,7 +25,7 @@ let dialog = {
             dialog.callback = callback;
         }
 
-        ipcRenderer.send('open-dialog', options);
+        window.electronAPI.send('open-dialog', options);
 
     }
 

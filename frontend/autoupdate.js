@@ -1,17 +1,15 @@
-const { ipcRenderer } = require('electron');
-
 let autoupdate = {
 
     init: () => {
 
-        ipcRenderer.on('update-available', () => {
-            ipcRenderer.removeAllListeners('update-available');
+        window.electronAPI.on('update-available', () => {
+            window.electronAPI.removeAllListeners('update-available');
             msg.info('Lade Update herunter...',{
                 heading: 'Update Verfügbar'
             });
         });
-        ipcRenderer.on('update-downloaded', () => {
-            ipcRenderer.removeAllListeners('update-downloaded');
+        window.electronAPI.on('update-downloaded', () => {
+            window.electronAPI.removeAllListeners('update-downloaded');
 
             dialog.open({
                 title: 'Update installieren',
@@ -24,7 +22,7 @@ let autoupdate = {
                  * Ja Update installieren geklickt.
                  */
                 if(response.answer === 2) {
-                    ipcRenderer.send('restart-app');
+                    window.electronAPI.send('restart-app');
                 }
 
             });

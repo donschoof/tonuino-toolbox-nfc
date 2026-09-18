@@ -1,5 +1,3 @@
-const { ipcRenderer } = require('electron');
-
 let window_actions = {
 
     $btn_group: null,
@@ -15,7 +13,7 @@ let window_actions = {
             /*
              * sende commando an den worker über den main prozess
              */
-            ipcRenderer.send('mainwindow-action', $btn.data('action'));
+            window.electronAPI.send('mainwindow-action', $btn.data('action'));
         });
 
     }

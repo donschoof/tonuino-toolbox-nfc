@@ -1,6 +1,13 @@
-// file-url's latest major is ESM-only and can't be require()'d from this
-// CommonJS renderer script, so we use Node's built-in equivalent instead.
-var fileUrl = (p) => require('url').pathToFileURL(p).href;
+// This renderer script is bundled for the browser (contextIsolation) and
+// has no access to Node's 'url' module, so file:// URLs are built by hand
+// here instead (handles both POSIX and Windows-style paths).
+var fileUrl = (p) => {
+    let normalized = p.replace(/\\/g, '/');
+    if (normalized[0] !== '/') {
+        normalized = '/' + normalized;
+    }
+    return encodeURI('file://' + normalized).replace(/#/g, '%23');
+};
 
 let track_table = {
 

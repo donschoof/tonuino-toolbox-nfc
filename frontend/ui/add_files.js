@@ -1,5 +1,4 @@
-const { ipcRenderer } = require('electron');
-const logger = require('../../logger');
+const logger = require('../logger');
 
 let add_files = {
 
@@ -10,7 +9,7 @@ let add_files = {
 
         add_files.initEvents();
 
-        ipcRenderer.on('mp3s-choosed', (event, files) => {
+        window.electronAPI.on('mp3s-choosed', (files) => {
 
             add_files.add(files);
 
@@ -23,7 +22,7 @@ let add_files = {
         add_files.$btn.click(() => {
 
             if(theapp.folder) {
-                ipcRenderer.send('open-mp3-chooser');
+                window.electronAPI.send('open-mp3-chooser');
             }
             else {
                 alert('Du musst erst einen Ordner wählen');
