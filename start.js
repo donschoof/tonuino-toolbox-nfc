@@ -1,13 +1,9 @@
 const path = require('path');
-const { app, BrowserWindow, ipcMain, protocol, dialog, globalShortcut, Menu } = require('electron');
+const { pathToFileURL } = require('url');
+const { app, BrowserWindow, ipcMain, protocol, dialog, globalShortcut, Menu, net } = require('electron');
 //const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const template = require('./menu');
-const pLogger = require('pretty-logger');
-
-let loggi = new pLogger({
-
-});
 
 let mainWindow, dialogWindow, workerWindow;
 
@@ -24,18 +20,34 @@ function sendWindowMessage(targetWindow, message, payload) {
   targetWindow.webContents.send(message, payload);
 }
 
+/*
+ * Custom schemes must be registered as privileged before the app is ready.
+ * protocol.registerFileProtocol/interceptFileProtocol were removed from
+ * Electron; protocol.handle() (registered after whenReady) replaces both.
+ */
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'coverart',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+  },
+  {
+    scheme: 'static',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+  }
+]);
+
 const registerProtocols = () => {
 
-  protocol.registerFileProtocol('coverart', (request, callback) => {
+  protocol.handle('coverart', (request) => {
     const url = request.url.split('coverart://')[1].trim();
-    callback({
-      path: path.normalize(app.getPath('userData') + '/coverart/' + url)
-    });
+    const filePath = path.normalize(path.join(app.getPath('userData'), 'coverart', url));
+    return net.fetch(pathToFileURL(filePath).toString());
   });
 
-  protocol.interceptFileProtocol('static', (request, callback) => {
+  protocol.handle('static', (request) => {
     const url = request.url.split('static://')[1].trim();
-    callback({ path: path.normalize(`${__dirname}/static/${url}`)})
+    const filePath = path.normalize(path.join(__dirname, 'static', url));
+    return net.fetch(pathToFileURL(filePath).toString());
   });
 
 };
@@ -54,7 +66,16 @@ const createWindow = () => {
     height: 700,
     frame: false,
     webPreferences: {
+      // Modern Electron defaults webPreferences.sandbox to true for every
+      // renderer, which disables Node integration even with
+      // nodeIntegration:true unless sandbox is explicitly turned back off.
+      // This app's renderer code calls require() directly (no preload/
+      // contextBridge split), so nodeIntegration + sandbox:false is kept
+      // to preserve existing behavior. See the accompanying report for the
+      // contextIsolation/preload migration this leaves as future work.
       nodeIntegration: true,
+      contextIsolation: false,
+      sandbox: false,
       webSecurity: false
     },
     show: false,
@@ -76,7 +97,7 @@ const createWindow = () => {
     show: false,
     width: 800,
     height: 600,
-    webPreferences: { nodeIntegration: true }
+    webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false }
   });
 
   //workerWindow.webContents.openDevTools();
@@ -147,7 +168,7 @@ const createWindow = () => {
    * mp3 chooser dialog
    */
   ipcMain.on('open-mp3-chooser', async () => {
-    let files = await dialog.showOpenDialogSync(mainWindow, {
+    let result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile', 'multiSelections'],
       filters: [{
         name: 'MP3 Dateien',
@@ -155,8 +176,8 @@ const createWindow = () => {
       }],
       buttonLabel: 'Kopieren'
     });
-    if(files !== undefined) {
-      mainWindow.webContents.send('mp3s-choosed', files);
+    if(result && !result.canceled && result.filePaths.length > 0) {
+      mainWindow.webContents.send('mp3s-choosed', result.filePaths);
     }
 
   });
@@ -177,7 +198,7 @@ const createWindowDialog = () => {
     width: 350,
     height: 240,
     frame: false,
-    webPreferences: { nodeIntegration: true },
+    webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false },
     show: false,
     modal: true,
     parent: mainWindow,
@@ -227,7 +248,22 @@ const createWindowDialog = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.whenReady().then(() => {
+
+  /*
+   * Replacements for the removed `electron.remote` module: app version and
+   * well-known paths, previously read directly from the renderer/worker.
+   * Registered once, here, so re-activating the app on macOS doesn't try
+   * to register the same handle() twice.
+   */
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+  });
+
+  ipcMain.handle('get-app-path', (event, name) => {
+    return app.getPath(name);
+  });
+
   registerProtocols();
   createWindow();
   createWindowDialog();

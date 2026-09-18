@@ -1,6 +1,5 @@
-//const dialog = require('electron').remote.dialog;
-const { BrowserWindow } = require('electron').remote;
-
+// `electron.remote` was removed from Electron; BrowserWindow was imported
+// here but never actually used anywhere below, so it is simply dropped.
 let purge = {
 
     $btn: null,

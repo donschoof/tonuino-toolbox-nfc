@@ -1,4 +1,6 @@
-var fileUrl = require('file-url');
+// file-url's latest major is ESM-only and can't be require()'d from this
+// CommonJS renderer script, so we use Node's built-in equivalent instead.
+var fileUrl = (p) => require('url').pathToFileURL(p).href;
 
 let track_table = {
 

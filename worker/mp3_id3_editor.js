@@ -1,10 +1,34 @@
-const NodeID3 = require('node-id3');
-const mm = require('musicmetadata');
-const util = require('util');
+// The Promise-based API keeps the same rejecting-on-error behaviour the
+// old code relied on (plain NodeID3.update()/.create() are synchronous
+// as of node-id3 0.2.x and return an Error value instead of throwing).
+const NodeID3 = require('node-id3').Promise;
 const path = require('path');
 const fs = require('fs');
-const metadata = util.promisify(mm);
 const logger = require('../logger');
+
+// music-metadata is ESM-only, loaded lazily via dynamic import().
+let _musicMetadataPromise = null;
+const getMusicMetadata = () => {
+    if (!_musicMetadataPromise) {
+        _musicMetadataPromise = import('music-metadata');
+    }
+    return _musicMetadataPromise;
+};
+
+// Adapts music-metadata's result shape back to the old "musicmetadata" shape.
+const metadata = async (filePath) => {
+    const mm = await getMusicMetadata();
+    const parsed = await mm.parseFile(filePath);
+    const common = parsed.common || {};
+
+    return {
+        title: common.title,
+        artist: common.artist !== undefined ? [common.artist] : undefined,
+        track: common.track,
+        album: common.album,
+        picture: common.picture
+    };
+};
 
 const mp3_id3_editor = {
 
@@ -54,7 +78,7 @@ const mp3_id3_editor = {
         };
 
         try {
-            meta = await metadata(fs.createReadStream(file_path));
+            meta = await metadata(file_path);
 
             if(meta.title !== undefined) {
                 tags.title = meta.title;

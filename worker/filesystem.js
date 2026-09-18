@@ -1,16 +1,49 @@
 const fs = require('fs');
 const path = require('path');
-const FileType = require('file-type');
 const util = require('util');
 const helper = require("../helper");
-const mm = require('musicmetadata');
 const { ipcRenderer } = require('electron');
-const electron = require('electron');
-const rimraf = require('rimraf');
+const { rimraf } = require('rimraf');
 const logger = require('../logger');
 
 const readdir = util.promisify(fs.readdir);
-const metadata = util.promisify(mm);
+
+// file-type and music-metadata are now ESM-only packages, so they are
+// loaded lazily via dynamic import() from this CommonJS worker script.
+let _fileTypePromise = null;
+const getFileType = () => {
+    if (!_fileTypePromise) {
+        _fileTypePromise = import('file-type');
+    }
+    return _fileTypePromise;
+};
+
+let _musicMetadataPromise = null;
+const getMusicMetadata = () => {
+    if (!_musicMetadataPromise) {
+        _musicMetadataPromise = import('music-metadata');
+    }
+    return _musicMetadataPromise;
+};
+
+/*
+ * Adapts music-metadata's modern result shape back to the shape the old
+ * "musicmetadata" package used to return, so the rest of this file (and
+ * mp3_id3_editor.js) doesn't need to change.
+ */
+const metadata = async (filePath) => {
+    const mm = await getMusicMetadata();
+    const parsed = await mm.parseFile(filePath);
+    const common = parsed.common || {};
+
+    return {
+        title: common.title,
+        artist: common.artist !== undefined ? [common.artist] : undefined,
+        track: common.track,
+        album: common.album,
+        picture: common.picture
+    };
+};
 
 let filesystem = {
 
@@ -19,8 +52,8 @@ let filesystem = {
     path_coverart: null,
 
     init: async () => {
-        filesystem.path_data = electron.remote.app.getPath('appData');
-        filesystem.path_user = electron.remote.app.getPath('userData');
+        filesystem.path_data = await ipcRenderer.invoke('get-app-path', 'appData');
+        filesystem.path_user = await ipcRenderer.invoke('get-app-path', 'userData');
         filesystem.path_coverart = path.join(filesystem.path_user, 'coverart');
         if (!await fs.existsSync(filesystem.path_coverart)) {
             await fs.mkdirSync(filesystem.path_coverart);
@@ -73,7 +106,8 @@ let filesystem = {
 
                     let type;
                     try {
-                        type = await FileType.fromFile(path.join(fullpath, file));
+                        const FileType = await getFileType();
+                        type = await FileType.fileTypeFromFile(path.join(fullpath, file));
                     }
                     catch (e) {
                         logger.error('get filetype error');
@@ -93,7 +127,7 @@ let filesystem = {
 
                         let meta;
                         try {
-                            meta = await metadata(fs.createReadStream(path.join(fullpath, file)));
+                            meta = await metadata(path.join(fullpath, file));
                         }
                         catch (e) {
                             logger.error('get metadata error');
@@ -236,7 +270,7 @@ let filesystem = {
                     if(!image) {
                         let meta;
                         try {
-                            meta = await metadata(fs.createReadStream(path.join(fullpath, file)));
+                            meta = await metadata(path.join(fullpath, file));
                         }
                         catch (e) {
                             logger.log('Fehler Metadata', e);
@@ -318,7 +352,7 @@ let filesystem = {
 
     removeAll: async (fullpath) => {
 
-        return await rimraf.sync(fullpath);
+        return await rimraf(fullpath);
 
     },
 

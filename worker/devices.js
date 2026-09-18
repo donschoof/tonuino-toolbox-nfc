@@ -4,11 +4,6 @@ const helper = require ("../helper");
 const fs = require('fs');
 const filesystem = require("./filesystem");
 const { ipcRenderer } = require('electron');
-const df = require('node-df');
-const util = require('util');
-const logger = require('../logger');
-
-const dfp = util.promisify(df);
 
 let devices = {
 
@@ -16,44 +11,7 @@ let devices = {
 
     list: async (callback) => {
 
-        if(helper.isWindows()) {
-
-            return await devices.listWindows();
-        }
-        else {
-            return await devices.listWinMac();
-        }
-
-    },
-
-    listWinMac: async () => {
-
-        let drives = await dfp();
-
-        logger.log(drives);
-
-        let out = [];
-
-        await helper.asyncForEach(drives, async (drive) => {
-            if(drive.size > 1065483 && drive.filesystem.indexOf('udev') === -1 && drive.filesystem.indexOf('tmpfs') === -1) {
-
-                let faktor = 1024;
-
-                out.push({
-                    name: drive.filesystem,
-                    path: drive.mount,
-                    size: drive.size*faktor,
-                    free: drive.available*faktor,
-                    busy: drive.used*faktor,
-                    size_format: helper.bytesToSize(drive.size*faktor),
-                    free_format: helper.bytesToSize(drive.available*faktor),
-                    busy_format: helper.bytesToSize(drive.used*faktor)
-                });
-
-            }
-        });
-
-        return out;
+        return await devices.listWindows();
 
     },
 
@@ -64,7 +22,18 @@ let devices = {
 
         await helper.asyncForEach(drives, async (drive) => {
 
-            if(drive.blocks > 1999136 && drive.filesystem.indexOf('udev') === -1 && drive.filesystem.indexOf('tmpfs') === -1) {
+            // Windows blocks are already bytes, so the raw ~2MB floor just
+            // excludes empty/invalid drives. Mac/Linux blocks are 512/1024-byte
+            // units from `df -P`, so the same raw threshold would only require
+            // ~1MB-2MB there too - keep the old node-df-era ~1GB floor for
+            // those platforms so small system/virtual filesystems still get
+            // filtered out the way they used to.
+            let min_blocks = 1999136;
+            if(!helper.isWindows()) {
+                min_blocks = helper.isMac() ? 2097152 : 1048576;
+            }
+
+            if(drive.blocks > min_blocks && drive.filesystem.indexOf('udev') === -1 && drive.filesystem.indexOf('tmpfs') === -1) {
                 let mount_parts = drive.mounted.split('/');
                 let name = mount_parts[mount_parts.length-1]+'';
                 if(name === '') {

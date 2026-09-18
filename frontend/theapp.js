@@ -1,5 +1,4 @@
 const { ipcRenderer } = require('electron');
-const electron = require('electron');
 const logger = require('../logger');
 
 let theapp = {
@@ -17,7 +16,7 @@ let theapp = {
     path_user: null,
     path_data: null,
 
-    init: () => {
+    init: async () => {
 
         theapp.$app_version = $('#app_version');
         theapp.$page = $('#fullpage');
@@ -32,13 +31,13 @@ let theapp = {
         /*
          * App Version setzen
          */
-        theapp.$app_version.text(electron.remote.app.getVersion());
+        theapp.$app_version.text(await ipcRenderer.invoke('get-app-version'));
 
         /*
          * pfade
          */
-        theapp.path_data = electron.remote.app.getPath('appData');
-        theapp.path_user = electron.remote.app.getPath('userData');
+        theapp.path_data = await ipcRenderer.invoke('get-app-path', 'appData');
+        theapp.path_user = await ipcRenderer.invoke('get-app-path', 'userData');
 
         /*
          * init message service
